@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 5인 랜폭 대결 레이싱!</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #0b0f19;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            perspective: 1000px;
+            padding: 15px 0;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 950px;
+            background: #111827;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            text-align: center;
+            border: 3px solid #3b82f6;
+            transform: rotateX(2deg);
+        }
+
+        h1 {
+            font-size: 1.9rem;
+            color: #60a5fa;
+            margin-bottom: 4px;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .instructions {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            margin-bottom: 15px;
+        }
+
+        .tracks-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 15px;
+        }
+
+        .road-container {
+            position: relative;
+            width: 100%;
+            height: 65px;
+            background: #1f2937;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #374151;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+        }
+
+        .road-container.player-road {
+            border: 2px solid #3b82f6;
+            background: #1e293b;
+        }
+
+        .lane-label {
+            position: absolute;
+            left: 8px;
+            top: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #93c5fd;
+            z-index: 4;
+            background: rgba(0,0,0,0.6);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .lane-record {
+            position: absolute;
+            right: 70px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.85rem;
+            color: #34d399;
+            font-weight: bold;
+            z-index: 4;
+            background: rgba(0,0,0,0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .finish-line {
+            position: absolute;
+            right: 40px;
+            top: 0;
+            width: 12px;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                #fff,
+                #fff 8px,
+                #000 8px,
+                #000 16px
+            );
+            z-index: 2;
+            box-shadow: 0 0 6px #fff;
+        }
+
+        .car {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%) scaleX(-1);
+            font-size: 2rem;
+            transition: left 0.08s ease-out;
+            z-index: 3;
+            filter: drop-shadow(0 4px 2px rgba(0,0,0,0.5));
+        }
+
+        .status-panel {
+            display: flex;
+            justify-content: space-around;
+            background: #1f2937;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: 1px solid #374151;
+        }
+
+        .status-item span {
+            color: #60a5fa;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            padding: 10px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+            outline: none;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, #60a5fa, #2563eb);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.6);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .leaderboard {
+            margin-top: 12px;
+            background: #1f2937;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #374151;
+        }
+
+        .leaderboard h3 {
+            color: #60a5fa;
+            margin-bottom: 3px;
+            font-size: 0.95rem;
+        }
+
+        .leaderboard ol {
+            list-style-position: inside;
+            color: #9ca3af;
+            font-size: 0.85rem;
+        }
+
+        .leaderboard li {
+            padding: 1px 0;
+        }
+
+        #countdown-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 15, 25, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 8rem;
+            font-weight: bold;
+            color: #60a5fa;
+            z-index: 10;
+            display: none;
+            text-shadow: 0 0 30px rgba(96, 165, 250, 0.8);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="countdown-overlay">3</div>
+
+    <div class="container">
+        <h1>🏎️ 스페이스바 레이싱</h1>
+        <p class="instructions">끝까지 완주하세요!</p>
+
+        <div class="tracks-wrapper">
+            <div class="road-container">
+                <div class="lane-label" id="label-bot1">AI 봇 1 (🚙)</div>
+                <div class="lane-record" id="record-bot1"></div>
+                <div class="finish-line"></div>
+                <div id="bot1" class="car">🚙</div>
+            </div>
+            <div class="road-container">
+                <div class="lane-label" id="label-bot2">AI 봇 2 (🚕)</div>
+                <div class="lane-record" id="record-bot2"></div>
+                <div class="finish-line"></div>
+                <div id="bot2" class="car">🚕</div>
+            </div>
+            <div class="road-container">
+                <div class="lane-label" id="label-bot3">AI 봇 3 (🚐)</div>
+                <div class="lane-record" id="record-bot3"></div>
+                <div class="finish-line"></div>
+                <div id="bot3" class="car">🚐</div>
+            </div>
+            <div class="road-container">
+                <div class="lane-label" id="label-bot4">AI 봇 4 (🛻)</div>
+                <div class="lane-record" id="record-bot4"></div>
+                <div class="finish-line"></div>
+                <div id="bot4" class="car">🛻</div>
+            </div>
+            <div class="road-container player-road">
+                <div class="lane-label" style="color:#60a5fa;">나 (PLAYER)</div>
+                <div class="finish-line"></div>
+                <div id="player-car" class="car">🏎️</div>
+            </div>
+        </div>
+
+        <div class="status-panel">
+            <div class="status-item">남은 거리: <span id="distance">200</span>m</div>
+            <div class="status-item">기록: <span id="timer">0.00</span>초</div>
+        </div>
+
+        <button id="start-btn" class="btn" onclick="startGame()">게임 시작</button>
+
+        <div class="leaderboard">
+            <h3>🏆 승리 기록 명예의 전당 (Top 3)</h3>
+            <ol id="ranking-list">
+                <li>기록 없음</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const playerCar = document.getElementById('player-car');
+        const bots = [
+            { id: 'bot1', el: document.getElementById('bot1'), labelEl: document.getElementById('label-bot1'), recordEl: document.getElementById('record-bot1'), pos: 15, name: 'AI 봇 1 (🚙)', finished: false, finishTime: 0 },
+            { id: 'bot2', el: document.getElementById('bot2'), labelEl: document.getElementById('label-bot2'), recordEl: document.getElementById('record-bot2'), pos: 15, name: 'AI 봇 2 (🚕)', finished: false, finishTime: 0 },
+            { id: 'bot3', el: document.getElementById('bot3'), labelEl: document.getElementById('label-bot3'), recordEl: document.getElementById('record-bot3'), pos: 15, name: 'AI 봇 3 (🚐)', finished: false, finishTime: 0 },
+            { id: 'bot4', el: document.getElementById('bot4'), labelEl: document.getElementById('label-bot4'), recordEl: document.getElementById('record-bot4'), pos: 15, name: 'AI 봇 4 (🛻)', finished: false, finishTime: 0 }
+        ];
+
+        const distanceEl = document.getElementById('distance');
+        const timerEl = document.getElementById('timer');
+        const startBtn = document.getElementById('start-btn');
+        const countdownOverlay = document.getElementById('countdown-overlay');
+        const rankingList = document.getElementById('ranking-list');
+
+        let isPlaying = false;
+        let playerPos = 15; 
+        let maxTrackWidth = 0;
+        let startTime = 0;
+        let timerInterval = null;
+        let botInterval = null;
+        let totalDistance = 200;
+        let spacePressed = false;
+        let playerFinishTime = 0;
+
+        // 요청하신 속도 설정 유지
+        const difficulties = [
+            { name: '쉬움', speedMin: 5.0, speedVar: 0.6 },
+            { name: '보통', speedMin: 5.9, speedVar: 0.6 },
+            { name: '어려움', speedMin: 7.3, speedVar: 0.3 },
+            { name: '불가능', speedMin: 8.6, speedVar: 0.4 }
+        ];
+
+        function updateTrackWidth() {
+            const track = document.querySelector('.road-container');
+            maxTrackWidth = track.clientWidth - 60;
+        }
+        window.addEventListener('resize', updateTrackWidth);
+        window.addEventListener('load', updateTrackWidth);
+
+        function loadRankings() {
+            const rankings = JSON.parse(localStorage.getItem('space_racing_random_rankings')) || [];
+            if (rankings.length === 0) {
+                rankingList.innerHTML = '<li>기록 없음</li>';
+            } else {
+                rankingList.innerHTML = rankings.map(time => `<li>${time}초</li>`).join('');
+            }
+        }
+        loadRankings();
+
+        function assignRandomDifficulties() {
+            let shuffledDiffs = [...difficulties].sort(() => Math.random() - 0.5);
+            bots.forEach((bot, index) => {
+                bot.diff = shuffledDiffs[index];
+                bot.finished = false;
+                bot.finishTime = 0;
+                bot.labelEl.textContent = `${bot.name} [${bot.diff.name}]`;
+                bot.recordEl.style.display = 'none';
+                bot.recordEl.textContent = '';
+            });
+        }
+
+        function startGame() {
+            updateTrackWidth();
+            assignRandomDifficulties();
+
+            startBtn.style.display = 'none';
+            countdownOverlay.style.display = 'flex';
+            
+            let count = 3;
+            countdownOverlay.textContent = count;
+
+            let countdownTimer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownOverlay.textContent = count;
+                } else if (count === 0) {
+                    countdownOverlay.textContent = "GO!";
+                } else {
+                    clearInterval(countdownTimer);
+                    countdownOverlay.style.display = 'none';
+                    beginRace();
+                }
+            }, 1000);
+        }
+
+        function beginRace() {
+            isPlaying = true;
+            playerPos = 15;
+            spacePressed = false;
+            
+            playerCar.style.left = playerPos + 'px';
+            bots.forEach(bot => {
+                bot.pos = 15;
+                bot.finished = false;
+                bot.finishTime = 0;
+                bot.el.style.left = bot.pos + 'px';
+            });
+
+            distanceEl.textContent = totalDistance;
+            
+            startTime = Date.now();
+            
+            timerInterval = setInterval(() => {
+                let elapsedTime = (Date.now() - startTime) / 1000;
+                timerEl.textContent = elapsedTime.toFixed(2);
+            }, 10);
+
+            botInterval = setInterval(() => {
+                if (!isPlaying) return;
+
+                let currentTime = ((Date.now() - startTime) / 1000).toFixed(2);
+
+                bots.forEach(bot => {
+                    if (!bot.finished) {
+                        let moveSpeed = bot.diff.speedMin + (Math.random() * bot.diff.speedVar);
+                        bot.pos += moveSpeed;
+                        bot.el.style.left = bot.pos + 'px';
+
+                        if (bot.pos >= maxTrackWidth) {
+                            bot.finished = true;
+                            bot.finishTime = parseFloat(currentTime);
+                            bot.recordEl.textContent = `${currentTime}초`;
+                            bot.recordEl.style.display = 'block';
+                        }
+                    }
+                });
+            }, 50);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault(); 
+                if (!isPlaying) return;
+                if (e.repeat) return; 
+
+                if (spacePressed) return;
+                spacePressed = true;
+
+                playerPos += 12; 
+
+                let progressRate = (playerPos - 15) / (maxTrackWidth - 15);
+                if (progressRate > 1) progressRate = 1;
+                
+                let remainingDistance = Math.max(0, Math.ceil(totalDistance - (progressRate * totalDistance)));
+                distanceEl.textContent = remainingDistance;
+
+                playerCar.style.left = playerPos + 'px';
+                
+                playerCar.style.transform = `translateY(-50%) scaleX(-1) scale(1.05) rotate(2deg)`;
+                setTimeout(() => {
+                    if(isPlaying) playerCar.style.transform = `translateY(-50%) scaleX(-1) scale(1) rotate(0deg)`;
+                }, 50);
+
+                if (playerPos >= maxTrackWidth) {
+                    playerFinishTime = parseFloat(((Date.now() - startTime) / 1000).toFixed(2));
+                    endGame();
+                }
+            }
+        }, { passive: false });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                spacePressed = false;
+            }
+        }, { passive: false });
+
+        function endGame() {
+            isPlaying = false;
+            clearInterval(timerInterval);
+            clearInterval(botInterval);
+            
+            // 모든 참가자(플레이어 + 봇)를 기록(시간) 순으로 정렬하여 전체 순위 계산
+            let allParticipants = [
+                { type: 'player', time: playerFinishTime },
+                ...bots.map(b => ({ type: 'bot', diffName: b.diff.name, time: b.finished ? b.finishTime : 9999 }))
+            ];
+
+            allParticipants.sort((a, b) => a.time - b.time);
+
+            // 플레이어의 등수 찾기 (0부터 시작하므로 +1)
+            let myRank = allParticipants.findIndex(p => p.type === 'player') + 1;
+
+            if (myRank === 1) {
+                alert(`전부 추월했어요! 1등입니다! (기록: ${playerFinishTime}초)`);
+
+                let rankings = JSON.parse(localStorage.getItem('space_racing_random_rankings')) || [];
+                rankings.push(playerFinishTime);
+                rankings.sort((a, b) => a - b);
+                rankings = rankings.slice(0, 3);
+                localStorage.setItem('space_racing_random_rankings', JSON.stringify(rankings));
+                loadRankings();
+            } else {
+                // 내 바로 앞 등수(myRank - 2)에 있는 참가자 확인
+                let aheadParticipant = allParticipants[myRank - 2];
+                let aheadText = aheadParticipant.type === 'bot' ? `${aheadParticipant.diffName} 난이도` : '다른 플레이어';
+
+                alert(`내 앞 등수(${myRank - 1}등)인 ${aheadText}를 넘지 못했어요! (내 기록: ${playerFinishTime}초, ${myRank}등)`);
+            }
+
+            startBtn.style.display = 'inline-block';
+            startBtn.textContent = '다시 도전하기';
+            startBtn.blur();
+        }
+    </script>
+</body>
+</html>
