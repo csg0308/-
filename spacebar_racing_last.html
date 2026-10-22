@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스페이스바 레이싱</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #0b0f19;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            perspective: 1000px;
+            padding: 20px;
+        }
+
+        /* 메인 대시보드 (시작창 - PC 모니터 2x2 그리드 레이아웃) */
+        #start-screen {
+            width: 100%;
+            max-width: 1250px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 20px;
+        }
+
+        .panel-card {
+            background: #111827;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+            border: 2px solid #3b82f6;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .panel-card h2 {
+            font-size: 1.3rem;
+            color: #60a5fa;
+            margin-bottom: 12px;
+            text-shadow: 0 0 8px rgba(96, 165, 250, 0.4);
+            border-bottom: 1px solid #1f2937;
+            padding-bottom: 8px;
+        }
+
+        /* 1. 좌상: 학번 로그인 패널 */
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            color: #93c5fd;
+            font-weight: bold;
+        }
+
+        .form-group input {
+            padding: 10px 14px;
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
+        }
+
+        /* 2. 우상: 미니 프리뷰 트랙 패널 */
+        .preview-container {
+            position: relative;
+            width: 100%;
+            height: 195px;
+            background: #1a2234;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #374151;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 6px;
+        }
+
+        .mini-road {
+            position: relative;
+            width: 100%;
+            height: 30px;
+            background: #1f2937;
+            border-radius: 4px;
+            border: 1px solid #2d3748;
+            display: flex;
+            align-items: center;
+        }
+
+        .mini-car {
+            position: absolute;
+            left: 5px;
+            font-size: 1.1rem;
+            transform: scaleX(-1);
+            transition: left 0.05s linear;
+            z-index: 5;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7));
+        }
+
+        .mini-finish {
+            position: absolute;
+            right: 25px;
+            top: 0;
+            width: 8px;
+            height: 100%;
+            background: repeating-linear-gradient(0deg, #fff, #fff 4px, #000 4px, #000 8px);
+            z-index: 2;
+            box-shadow: 0 0 4px #fff;
+        }
+
+        .mini-time-badge {
+            position: absolute;
+            right: 38px;
+            font-size: 0.7rem;
+            color: #34d399;
+            font-weight: bold;
+            background: rgba(0,0,0,0.85);
+            padding: 2px 5px;
+            border-radius: 3px;
+            display: none;
+            z-index: 6;
+        }
+
+        .preview-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 15, 25, 0.88);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            font-weight: bold;
+            color: #60a5fa;
+            z-index: 10;
+            text-shadow: 0 0 15px rgba(96, 165, 250, 0.8);
+        }
+
+        .space-badge {
+            position: absolute;
+            left: 10px;
+            top: 6px;
+            background: #2563eb;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            box-shadow: 0 0 8px rgba(37, 99, 235, 0.6);
+            z-index: 8;
+            animation: pulse 0.3s infinite alternate;
+            display: none;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.1); opacity: 1; }
+        }
+
+        /* 3. 좌하: 게임 설명 및 팁 */
+        .instructions-content {
+            font-size: 0.88rem;
+            color: #9ca3af;
+            line-height: 1.5;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .instructions-content kbd {
+            background: #374151;
+            color: #60a5fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            border-bottom: 2px solid #1f2937;
+        }
+
+        .point-badge-box {
+            background: #1e293b;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            padding: 8px;
+            margin-top: 4px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+
+        .point-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .point-item .diff-title {
+            color: #93c5fd;
+            font-weight: bold;
+        }
+
+        .point-item .pts {
+            color: #f59e0b;
+            font-weight: bold;
+        }
+
+        /* 4. 우하: 랭킹 (명예의 전당 Top 10) */
+        .leaderboard-box {
+            max-height: 190px;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 0.85rem;
+        }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .leaderboard-table th, .leaderboard-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #1f2937;
+            color: #d1d5db;
+        }
+
+        .leaderboard-table th {
+            color: #60a5fa;
+            font-size: 0.8rem;
+            background: #1a2234;
+            position: sticky;
+            top: 0;
+        }
+
+        /* 공통 버튼 스타일 */
+        .btn {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            outline: none;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            background: linear-gradient(135deg, #60a5fa, #2563eb);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6);
+        }
+
+        /* 실제 게임 플레이 화면 스타일 */
+        #game-screen {
+            display: none;
+            width: 95%;
+            max-width: 950px;
+            background: #111827;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            text-align: center;
+            border: 3px solid #3b82f6;
+            transform: rotateX(1deg);
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: #60a5fa;
+            margin-bottom: 4px;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .tracks-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 15px;
+        }
+
+        .road-container {
+            position: relative;
+            width: 100%;
+            height: 65px;
+            background: #1f2937;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #374151;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+        }
+
+        .road-container.player-road {
+            border: 2px solid #3b82f6;
+            background: #1e293b;
+        }
+
+        .lane-label {
+            position: absolute;
+            left: 8px;
+            top: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #93c5fd;
+            z-index: 4;
+            background: rgba(0,0,0,0.6);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .lane-record {
+            position: absolute;
+            right: 70px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.85rem;
+            color: #34d399;
+            font-weight: bold;
+            z-index: 6;
+            background: rgba(0,0,0,0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .finish-line {
+            position: absolute;
+            right: 50px;
+            top: 0;
+            width: 12px;
+            height: 100%;
+            background: repeating-linear-gradient(0deg, #fff, #fff 8px, #000 8px, #000 16px);
+            z-index: 2;
+            box-shadow: 0 0 6px #fff;
+        }
+
+        .car {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%) scaleX(-1);
+            font-size: 2rem;
+            transition: left 0.08s ease-out;
+            z-index: 5;
+            filter: drop-shadow(0 4px 3px rgba(0,0,0,0.6));
+        }
+
+        .status-panel {
+            display: flex;
+            justify-content: space-around;
+            background: #1f2937;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: 1px solid #374151;
+        }
+
+        .status-item span {
+            color: #60a5fa;
+        }
+
+        .game-btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* 카운트다운 오버레이 */
+        #countdown-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 15, 25, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 8rem;
+            font-weight: bold;
+            color: #60a5fa;
+            z-index: 100;
+            display: none;
+            text-shadow: 0 0 30px rgba(96, 165, 250, 0.8);
+        }
+
+        /* 결과 모달 창 */
+        #result-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            display: none;
+        }
+
+        .modal-content {
+            background: #111827;
+            border: 2px solid #3b82f6;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.5);
+        }
+
+        .modal-content h2 {
+            color: #60a5fa;
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            color: #d1d5db;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 카운트다운 오버레이 -->
+    <div id="countdown-overlay">3</div>
+
+    <!-- 결과 모달 창 -->
+    <div id="result-modal">
+        <div class="modal-content">
+            <h2 id="modal-title">🏁 레이스 결과</h2>
+            <p id="modal-desc"></p>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" onclick="retryGame()">다시 도전</button>
+                <button class="btn" style="background: linear-gradient(135deg, #4b5563, #1f2937);" onclick="exitToDashboard()">종료하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- [시작창] PC 모니터 2x2 대시보드 -->
+    <div id="start-screen">
+        <!-- 1. 좌상: 학번 로그인 패널 -->
+        <div class="panel-card">
+            <h2>🎓 학번 및 이름 입력</h2>
+            <div class="login-form">
+                <div class="form-group">
+                    <label>학번 (반드시 5자리 숫자, 예: 10201)</label>
+                    <input type="text" id="input-student-id" maxlength="5" placeholder="5자리 숫자 입력">
+                </div>
+                <div class="form-group">
+                    <label>이름</label>
+                    <input type="text" id="input-student-name" placeholder="이름 입력">
+                </div>
+                <button class="btn" onclick="validateAndStartGame()">🚀 레이스 시작하기</button>
+            </div>
+        </div>
+
+        <!-- 2. 우상: 미니 프리뷰 트랙 패널 -->
+        <div class="panel-card">
+            <h2>📺 실시간 게임 미리보기</h2>
+            <div class="preview-container" id="preview-box">
+                <div class="preview-overlay" id="preview-overlay">3</div>
+                <div class="space-badge" id="preview-space-badge">SPACE</div>
+                
+                <div class="mini-road">
+                    <div class="mini-finish"></div>
+                    <div class="mini-time-badge" id="p-time-0"></div>
+                    <div class="mini-car" id="p-bot1" style="top:2px;">🚙</div>
+                </div>
+                <div class="mini-road">
+                    <div class="mini-finish"></div>
+                    <div class="mini-time-badge" id="p-time-1"></div>
+                    <div class="mini-car" id="p-bot2" style="top:2px;">🚕</div>
+                </div>
+                <div class="mini-road">
+                    <div class="mini-finish"></div>
+                    <div class="mini-time-badge" id="p-time-2"></div>
+                    <div class="mini-car" id="p-bot3" style="top:2px;">🚐</div>
+                </div>
+                <div class="mini-road">
+                    <div class="mini-finish"></div>
+                    <div class="mini-time-badge" id="p-time-3"></div>
+                    <div class="mini-car" id="p-bot4" style="top:2px;">🛻</div>
+                </div>
+                <div class="mini-road" style="background:#1e293b; border-color:#3b82f6;">
+                    <div class="mini-finish"></div>
+                    <div class="mini-time-badge" id="p-time-4"></div>
+                    <div class="mini-car" id="p-player" style="top:2px;">🏎️</div>
+                </div>
+            </div>
+            <p style="font-size:0.8rem; color:#9ca3af; margin-top:8px; text-align:center;">실시간 레이스 미리보기 방송 중</p>
+        </div>
+
+        <!-- 3. 좌하: 게임 설명 및 팁 -->
+        <div class="panel-card">
+            <h2>📜 게임 설명 & 팁</h2>
+            <div class="instructions-content">
+                <p>• 키보드 <kbd>SPACE</kbd> 키를 빠르게 연타하여 내 자동차를 결승선까지 이동시키세요!</p>
+                <p>• 4명의 AI 봇(쉬움~불가능 난이도 랜덤)과 경쟁하여 1등을 달성하세요.</p>
+                <p>• 동일 학번/이름은 최고 기록으로 갱신(덮어쓰기)됩니다!</p>
+                <p style="margin-top:2px;">• 🎁 <b>난이도별 보상 포인트 안내</b></p>
+                <div class="point-badge-box">
+                    <div class="point-item"><span class="diff-title">쉬움</span><span class="pts">50 P</span></div>
+                    <div class="point-item"><span class="diff-title">중간</span><span class="pts">150 P</span></div>
+                    <div class="point-item"><span class="diff-title">어려움</span><span class="pts">300 P</span></div>
+                    <div class="point-item"><span class="diff-title">불가능</span><span class="pts">500 P</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 우하: 랭킹 (명예의 전당 Top 10) -->
+        <div class="panel-card">
+            <h2>🏆 명예의 전당 (Top 10)</h2>
+            <div class="leaderboard-box">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>순위</th>
+                            <th>학번</th>
+                            <th>이름</th>
+                            <th>기록</th>
+                            <th>날짜</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hall-of-fame-body">
+                        <tr><td colspan="5" style="text-align:center; color:#9ca3af;">기록 없음</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- [실제 게임 플레이 화면] -->
+    <div id="game-screen">
+        <h1 id="game-title">🏎️ 스페이스바 레이싱</h1>
+        <p style="font-size: 0.9rem; color: #9ca3af; margin-bottom: 12px;" id="user-info-display">학번: 00000 | 이름: 홍길동</p>
+
+        <div class="tracks-wrapper">
+            <div class="road-container">
+                <div class="lane-label" id="label-bot1">AI 봇 1 (🚙)</div>
+                <div class="lane-record" id="record-bot1"></div>
+                <div class="finish-line"></div>
+                <div id="bot1" class="car">🚙</div>
+            </div>
+            <div class="road-container">
+                <div class="lane-label" id="label-bot2">AI 봇 2 (🚕)</div>
+                <div class="lane-record" id="record-bot2"></div>
+                <div class="finish-line"></div>
+                <div id="bot2" class="car">🚕</div>
+            </div>
+            <div class="road-container">
+                <div class="lane-label" id="label-bot3">AI 봇 3 (🚐)</div>
+                <div class="lane-record" id="record-bot3"></div>
+                <div class="finish-line"></div>
+                <div id="bot3" class="car">🚐</div>
+            </div>
+            <div class="road-container">
+                <div class="lane-label" id="label-bot4">AI 봇 4 (🛻)</div>
+                <div class="lane-record" id="record-bot4"></div>
+                <div class="finish-line"></div>
+                <div id="bot4" class="car">🛻</div>
+            </div>
+            <div class="road-container player-road">
+                <div class="lane-label" id="player-lane-label" style="color:#60a5fa;">나 (PLAYER)</div>
+                <div class="finish-line"></div>
+                <div id="player-car" class="car">🏎️</div>
+            </div>
+        </div>
+
+        <div class="status-panel">
+            <div class="status-item">남은 거리: <span id="distance">200</span>m</div>
+            <div class="status-item">기록: <span id="timer">0.00</span>초</div>
+        </div>
+
+        <div class="game-btn-group">
+            <button class="btn" style="background: linear-gradient(135deg, #4b5563, #1f2937);" onclick="exitToDashboard()">종료하기</button>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================================
+        // ⚙️ [속도 및 이동 거리 조절 패널]
+        // =========================================================================
+        const SPACE_STEP_PIXELS = 45; // // 👈 스페이스바 1번 클릭당 이동 거리(px)
+
+        const difficulties = [
+            { name: '쉬움',   speedMin: 4.0, speedVar: 0.6 },
+            { name: '중간',   speedMin: 5.0, speedVar: 0.6 },
+            { name: '어려움', speedMin: 6.0, speedVar: 0.5 },
+            { name: '불가능', speedMin: 7.0, speedVar: 0.5 }
+        ];
+
+        const PREVIEW_PLAYER_SPEED = 7.4;
+        const PREVIEW_BOT_SCALE = 1.0;
+        // =========================================================================
+
+
+        let currentStudent = { id: '', name: '' };
+
+        const bots = [
+            { id: 'bot1', el: document.getElementById('bot1'), labelEl: document.getElementById('label-bot1'), recordEl: document.getElementById('record-bot1'), pos: 15, name: 'AI 봇 1 (🚙)', finished: false, finishTime: 0 },
+            { id: 'bot2', el: document.getElementById('bot2'), labelEl: document.getElementById('label-bot2'), recordEl: document.getElementById('record-bot2'), pos: 15, name: 'AI 봇 2 (🚕)', finished: false, finishTime: 0 },
+            { id: 'bot3', el: document.getElementById('bot3'), labelEl: document.getElementById('label-bot3'), recordEl: document.getElementById('record-bot3'), pos: 15, name: 'AI 봇 3 (🚐)', finished: false, finishTime: 0 },
+            { id: 'bot4', el: document.getElementById('bot4'), labelEl: document.getElementById('label-bot4'), recordEl: document.getElementById('record-bot4'), pos: 15, name: 'AI 봇 4 (🛻)', finished: false, finishTime: 0 }
+        ];
+
+        const playerCar = document.getElementById('player-car');
+        const distanceEl = document.getElementById('distance');
+        const timerEl = document.getElementById('timer');
+        const countdownOverlay = document.getElementById('countdown-overlay');
+        const resultModal = document.getElementById('result-modal');
+
+        let isPlaying = false;
+        let playerPos = 15;
+        let finishThresholdPx = 0;
+        let startTime = 0;
+        let timerInterval = null;
+        let botInterval = null;
+        let totalDistance = 200;
+        let spacePressed = false;
+        let playerFinishTime = 0;
+
+        function updateTrackWidth() {
+            const track = document.querySelector('.road-container');
+            if (track && track.clientWidth > 0) {
+                finishThresholdPx = track.clientWidth - 85;
+            } else {
+                finishThresholdPx = 800; 
+            }
+        }
+
+        window.addEventListener('resize', updateTrackWidth);
+        window.addEventListener('load', () => {
+            loadLeaderboard();
+            startPreviewLoop();
+        });
+
+        function loadLeaderboard() {
+            const tbody = document.getElementById('hall-of-fame-body');
+            const rankings = JSON.parse(localStorage.getItem('space_racing_school_rankings_v3')) || [];
+            
+            if (rankings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#9ca3af;">기록 없음</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = rankings.map((r, idx) => `
+                <tr>
+                    <td>${idx + 1}위</td>
+                    <td>${r.id}</td>
+                    <td>${r.name}</td>
+                    <td style="color:#34d399; font-weight:bold;">${r.time}초</td>
+                    <td style="font-size:0.75rem; color:#9ca3af;">${r.date}</td>
+                </tr>
+            `).join('');
+        }
+
+        function validateAndStartGame() {
+            const idInput = document.getElementById('input-student-id').value.trim();
+            const nameInput = document.getElementById('input-student-name').value.trim();
+
+            if (!/^\d{5}$/.test(idInput)) {
+                alert('학번은 반드시 숫자 5자리로 입력해주세요! (예: 10201)');
+                return;
+            }
+            if (!nameInput) {
+                alert('이름을 입력해주세요!');
+                return;
+            }
+
+            currentStudent.id = idInput;
+            currentStudent.name = nameInput;
+
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+            document.getElementById('user-info-display').textContent = `학번: ${currentStudent.id} | 이름: ${currentStudent.name}`;
+            document.getElementById('player-lane-label').textContent = `${currentStudent.name} (${currentStudent.id})`;
+
+            updateTrackWidth();
+            startGameSequence();
+        }
+
+        function exitToDashboard() {
+            isPlaying = false;
+            clearInterval(timerInterval);
+            clearInterval(botInterval);
+            resultModal.style.display = 'none';
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('start-screen').style.display = 'grid';
+            loadLeaderboard();
+        }
+
+        function retryGame() {
+            resultModal.style.display = 'none';
+            startGameSequence();
+        }
+
+        /* -------------------------------------------------------------
+           미니 프리뷰 엔진
+        ------------------------------------------------------------- */
+        let previewInterval = null;
+        function startPreviewLoop() {
+            const pCars = [
+                document.getElementById('p-bot1'),
+                document.getElementById('p-bot2'),
+                document.getElementById('p-bot3'),
+                document.getElementById('p-bot4'),
+                document.getElementById('p-player')
+            ];
+            const pOverlay = document.getElementById('preview-overlay');
+            const pBadge = document.getElementById('preview-space-badge');
+            
+            const timeBadges = [0,1,2,3,4].map(i => document.getElementById(`p-time-${i}`));
+            timeBadges.forEach(b => { if(b) b.style.display = 'none'; });
+
+            const previewContainer = document.getElementById('preview-box');
+            let pContainerWidth = previewContainer ? previewContainer.clientWidth : 550;
+            let startPx = 5;
+            let pTouchFinishPx = pContainerWidth - 52; 
+
+            let pPos = [startPx, startPx, startPx, startPx, startPx];
+            let pFinished = [false, false, false, false, false];
+
+            let shuffled = [...difficulties].sort(() => Math.random() - 0.5);
+            let pDiffs = [shuffled[0], shuffled[1], shuffled[2], shuffled[3]];
+
+            pPos.forEach((_, i) => { if (pCars[i]) pCars[i].style.left = startPx + 'px'; });
+            pBadge.style.display = 'none';
+
+            pOverlay.style.display = 'flex';
+            let count = 3;
+            pOverlay.textContent = count;
+
+            let cTimer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    pOverlay.textContent = count;
+                } else if (count === 0) {
+                    pOverlay.textContent = "GO!";
+                } else {
+                    clearInterval(cTimer);
+                    pOverlay.style.display = 'none';
+                    pBadge.style.display = 'block';
+
+                    let pStartTime = Date.now();
+
+                    if (previewInterval) clearInterval(previewInterval);
+                    previewInterval = setInterval(() => {
+                        let allDone = true;
+                        let elapsed = ((Date.now() - pStartTime) / 1000).toFixed(2);
+
+                        let trackScale = (pTouchFinishPx / 800) * PREVIEW_BOT_SCALE;
+
+                        for (let i = 0; i < 4; i++) {
+                            if (!pFinished[i]) {
+                                allDone = false;
+                                let speed = (pDiffs[i].speedMin + Math.random() * pDiffs[i].speedVar) * trackScale;
+                                pPos[i] += speed;
+                                pCars[i].style.left = Math.min(pPos[i], pTouchFinishPx + 10) + 'px';
+
+                                if (pPos[i] >= pTouchFinishPx) {
+                                    pFinished[i] = true;
+                                    if(timeBadges[i]) {
+                                        timeBadges[i].textContent = `${elapsed}초`;
+                                        timeBadges[i].style.display = 'block';
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!pFinished[4]) {
+                            allDone = false;
+                            let playerSpeed = PREVIEW_PLAYER_SPEED * (pTouchFinishPx / 800);
+                            pPos[4] += playerSpeed; 
+                            pCars[4].style.left = Math.min(pPos[4], pTouchFinishPx + 10) + 'px';
+
+                            if (pPos[4] >= pTouchFinishPx) {
+                                pFinished[4] = true;
+                                if(timeBadges[4]) {
+                                    timeBadges[4].textContent = `${elapsed}초`;
+                                    timeBadges[4].style.display = 'block';
+                                }
+                            }
+                        }
+
+                        if (allDone) {
+                            clearInterval(previewInterval);
+                            setTimeout(() => {
+                                startPreviewLoop();
+                            }, 2000);
+                        }
+                    }, 50);
+                }
+            }, 1000);
+        }
+
+        /* -------------------------------------------------------------
+           실제 게임 레이스 로직
+        ------------------------------------------------------------- */
+        function startGameSequence() {
+            assignRandomDifficulties();
+            countdownOverlay.style.display = 'flex';
+            
+            let count = 3;
+            countdownOverlay.textContent = count;
+
+            let countdownTimer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownOverlay.textContent = count;
+                } else if (count === 0) {
+                    countdownOverlay.textContent = "GO!";
+                } else {
+                    clearInterval(countdownTimer);
+                    countdownOverlay.style.display = 'none';
+                    beginRace();
+                }
+            }, 1000);
+        }
+
+        function assignRandomDifficulties() {
+            let shuffledDiffs = [...difficulties].sort(() => Math.random() - 0.5);
+            bots.forEach((bot, index) => {
+                bot.diff = shuffledDiffs[index];
+                bot.finished = false;
+                bot.finishTime = 0;
+                bot.labelEl.textContent = `${bot.name} [${bot.diff.name}]`;
+                bot.recordEl.style.display = 'none';
+                bot.recordEl.textContent = '';
+            });
+        }
+
+        function beginRace() {
+            updateTrackWidth();
+            isPlaying = true;
+            playerPos = 15;
+            spacePressed = false;
+            
+            playerCar.style.left = playerPos + 'px';
+            bots.forEach(bot => {
+                bot.pos = 15;
+                bot.finished = false;
+                bot.finishTime = 0;
+                bot.el.style.left = bot.pos + 'px';
+            });
+
+            distanceEl.textContent = totalDistance;
+            startTime = Date.now();
+            
+            timerInterval = setInterval(() => {
+                let elapsedTime = (Date.now() - startTime) / 1000;
+                timerEl.textContent = elapsedTime.toFixed(2);
+            }, 10);
+
+            botInterval = setInterval(() => {
+                if (!isPlaying) return;
+                let currentTime = parseFloat(((Date.now() - startTime) / 1000).toFixed(2));
+
+                bots.forEach(bot => {
+                    if (!bot.finished) {
+                        let moveSpeed = bot.diff.speedMin + (Math.random() * bot.diff.speedVar);
+                        bot.pos += moveSpeed;
+                        bot.el.style.left = bot.pos + 'px';
+
+                        if (bot.pos >= finishThresholdPx) {
+                            bot.finished = true;
+                            bot.finishTime = currentTime;
+                            bot.recordEl.textContent = `${currentTime}초`;
+                            bot.recordEl.style.display = 'block';
+                        }
+                    }
+                });
+            }, 50);
+        }
+
+        // 스페이스바 조작 플레이어 속도 조절
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!isPlaying) return;
+                if (e.repeat) return;
+                if (spacePressed) return;
+                spacePressed = true;
+
+                playerPos += SPACE_STEP_PIXELS; 
+
+                let progressRate = (playerPos - 15) / (finishThresholdPx - 15);
+                if (progressRate > 1) progressRate = 1;
+                
+                let remainingDistance = Math.max(0, Math.ceil(totalDistance - (progressRate * totalDistance)));
+                distanceEl.textContent = remainingDistance;
+
+                playerCar.style.left = playerPos + 'px';
+                playerCar.style.transform = `translateY(-50%) scaleX(-1) scale(1.05) rotate(2deg)`;
+                setTimeout(() => {
+                    if(isPlaying) playerCar.style.transform = `translateY(-50%) scaleX(-1) scale(1) rotate(0deg)`;
+                }, 50);
+
+                if (playerPos >= finishThresholdPx) {
+                    playerFinishTime = parseFloat(((Date.now() - startTime) / 1000).toFixed(2));
+                    endGame();
+                }
+            }
+        }, { passive: false });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                spacePressed = false;
+            }
+        }, { passive: false });
+
+        function endGame() {
+            isPlaying = false;
+            clearInterval(timerInterval);
+            clearInterval(botInterval);
+            
+            let allParticipants = [
+                { type: 'player', name: `${currentStudent.name} (${currentStudent.id})`, time: playerFinishTime },
+                ...bots.map(b => ({ type: 'bot', name: `${b.name} [${b.diff.name}]`, time: b.finished ? b.finishTime : 9999 }))
+            ];
+
+            allParticipants.sort((a, b) => a.time - b.time);
+            let myRank = allParticipants.findIndex(p => p.type === 'player') + 1;
+
+            const modalTitle = document.getElementById('modal-title');
+            const modalDesc = document.getElementById('modal-desc');
+
+            if (myRank === 1) {
+                modalTitle.textContent = "🏆 완주 성공! 1등입니다!";
+                modalDesc.innerHTML = `축하합니다! 모든 봇을 제치고 1등을 차지했습니다.<br><b>기록: ${playerFinishTime}초</b><br>랭킹에 정상 등록되었습니다!`;
+
+                let rankings = JSON.parse(localStorage.getItem('space_racing_school_rankings_v3')) || [];
+                const now = new Date();
+                const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+                
+                // 🌟 동일 학번 & 이름 검사 후 최고 기록 갱신 (덮어쓰기) 로직
+                const existingIndex = rankings.findIndex(r => r.id === currentStudent.id && r.name === currentStudent.name);
+
+                if (existingIndex !== -1) {
+                    // 기존 기록이 있을 경우, 새로운 기록이 더 빠를 때만 갱신
+                    if (playerFinishTime < rankings[existingIndex].time) {
+                        rankings[existingIndex].time = playerFinishTime;
+                        rankings[existingIndex].date = dateStr;
+                    }
+                } else {
+                    // 기존 기록이 없으면 새로 추가
+                    rankings.push({
+                        id: currentStudent.id,
+                        name: currentStudent.name,
+                        time: playerFinishTime,
+                        date: dateStr
+                    });
+                }
+                
+                rankings.sort((a, b) => a.time - b.time);
+                rankings = rankings.slice(0, 10); // 탑 10 유지
+                localStorage.setItem('space_racing_school_rankings_v3', JSON.stringify(rankings));
+            } else {
+                let aheadParticipant = allParticipants[myRank - 2];
+                modalTitle.textContent = `🏁 아쉽네요! ${myRank}등`;
+                modalDesc.innerHTML = `내 기록: <b>${playerFinishTime}초 (${myRank}등)</b><br>바로 앞 ${aheadParticipant.name}의 벽을 넘지 못했어요! 다시 도전해보세요.`;
+            }
+
+            resultModal.style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
